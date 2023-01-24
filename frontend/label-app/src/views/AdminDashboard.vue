@@ -1,14 +1,15 @@
 <template>
 <section class="ftco-section">
     <div class="container add">
-        <div class="row">
-            <div class="col-md-6 mb-5">
+        <div class="row top-bar">
+            <div class="col-md-9 mb-8">
                 <h1 class="heading-section">Welcome {{ store.email }}!</h1>
+                <p>Institution: {{ store.institution }}</p>
+            </div>
+            <div class="col-md-3 mb-2">
                 <button @click="logout" type="submit" class="form-control btn btn-dark submit px-3 logout-button mt-3">
-                        <span class="badge text-bg-light ml-3">
-                            Logout
-                        </span>
-                    </button>
+                    Logout
+                </button>
             </div>
         </div>
         <div class="row justify-content-center">
@@ -53,6 +54,9 @@
                                                                         <div class="ms-2 me-auto w-80">
                                                                             <div class="fw-bold">{{ item.name }}</div>
                                                                             {{ item.description }}
+                                                                            <div>
+                                                                                <span class="numberClaims">{{ item.num_claims }} claims</span>
+                                                                            </div>
                                                                             <div class="fw-bold">
                                                                                 <span v-if="item.is_active == true" class="badge bg-primary rounded-pill">Active</span>
                                                                                 <span v-else="item.is_active == false" class="badge bg-primary rounded-pill">Not Active</span>
@@ -77,7 +81,7 @@
                                                 </div>
                                             </div>
                                             <div class="login-wrap p-4 p-lg-5">
-                                                <form @submit.prevent="addDatabase" class="add-database-form">
+                                                <form @submit.prevent="mainAddDatabase" class="add-database-form">
                                                     <div class="form-group mb-3">
                                                         <label class="label" for="name">Name of database</label>
                                                         <input type="text" v-model="databaseName" class="form-control" placeholder="Database Name" required>
@@ -159,87 +163,109 @@
                                                                     <label class="label" for="password">Evidence Content</label>
                                                                     <input type="text" ref="evidenceField" class="form-control" placeholder="Evidence Content" required>
                                                                 </div>
+                                                                <div class="form-group mb-3">
+                                                                    <label class="label" for="password">Evidence Tag</label>
+                                                                    <select class="form-select" ref="evidenceInitialTagField" aria-label="Evidence select initial tag" required>
+                                                                        <option selected>Choose one from the menu:</option>
+                                                                        <option value="SUPPORTS">Supports</option>
+                                                                        <option value="REFUTES">Refutes</option>
+                                                                        <option value="NOT ENOUGH INFORMATION">Not enough Information</option>
+                                                                    </select>
+                                                                </div>
                                                             </div>
                                                             <div class="modal-footer">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                                <button type="submit" class="btn btn-primary addEvidenceButton" data-bs-dismiss="modal">Add evidence</button>
+                                                                <button class="btn btn-primary addEvidenceButton" data-bs-dismiss="modal">Add evidence</button>
                                                             </div>
                                                         </form>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="login-wrap p-4 p-lg-5">
-                                                <div class="form-group">
-                                                    <label class="label" for="name">Select a database</label>
-                                                    <div class="databaseDropdown">
-                                                        <button class="btn btn-secondary dropdown-toggle" type="button" ref="selectDatabaseBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                                                            Select a Database
-                                                        </button>
-                                                        <ul class="dropdown-menu" aria-labelledby="selectDatabase">
-                                                            <template v-for="item in returnData" :key="item.id">
-                                                                <li value="item.id">
-                                                                    <a class="dropdown-item" v-on:click="changeSelectedDatabase(item.id)">{{ item.id }} - {{ item.name }}</a>
-                                                                </li>
-                                                            </template>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                                <div class="form-check form-switch form-switch-lg">
-                                                    <input class="form-check-input addClaimsViaUpload" type="checkbox" v-model="uploadFiles" role="switch" id="flexSwitchCheckDefault">
-                                                    <label class="form-check-label" for="flexSwitchCheckDefault">Check to upload files instead</label>
-                                                </div>
-                                                <template v-if="!uploadFiles">
-                                                    <div class="form-group mb-3">
-                                                        <label class="label" for="name">Claim</label>
-                                                        <input type="text" v-model="addClaimContent" class="form-control" placeholder="Claim content." required>
-                                                    </div>
-                                                    <div class="form-group mb-3">
-                                                        <label class="label" for="password">Original ID [Optional]</label>
-                                                        <input type="number" v-model="addClaimOriginalID" class="form-control" placeholder="Original ID">
-                                                    </div>
-                                                    <div class="form-group mb-3">
-                                                        <label class="label" for="password">Initial Label [Optional]</label>
-                                                        <select class="form-select" aria-label="Default select example" v-model="selectedInitialLabel">
-                                                            <option selected>Choose one from the menu:</option>
-                                                            <option value="SUPPORTS">Supports</option>
-                                                            <option value="REFUTES">Refutes</option>
-                                                            <option value="NOT ENOUGH INFORMATION">Not enough Information</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="form-group mb-3">
-                                                        <label class="label" for="password">Add Evidence</label>
-                                                        <button class="btn btn-secondary px-3 ml-4" data-bs-toggle="modal" data-bs-target="#evidenceModal">Add Evidence</button>
-                                                        <div v-if="addEvidenceStore.length != 0" class="evidences overflow-auto">
-                                                            <ol class="list-group list-group-numbered">
-                                                                <template v-for="(evidence, index) in addEvidenceStore" :key="index">
-                                                                    <li class="list-group-item d-flex justify-content-between align-items-start">
-                                                                        <div class="ms-2 me-auto w-80">
-                                                                            <div class="fw-bold">{{ addEvidenceTitle[index] }}</div>
-                                                                            {{ evidence }}
-                                                                        </div>
-                                                                        <div class="options w-40">
-                                                                            <button @click="deleteEvidenceConfirm" class="btn btn-primary delete-button px-1" :id="'delete-' + index" style="--bs-btn-font-size: 0.9rem;" type="button">
-                                                                                Remove Evidence
-                                                                            </button>
-                                                                        </div>
+                                                <form @submit.prevent="addClaimAndEvidenceManual">
+                                                    <div class="form-group">
+                                                        <label class="label" for="name">Select a database</label>
+                                                        <div class="databaseDropdown">
+                                                            <button class="btn btn-secondary dropdown-toggle" type="button" ref="selectDatabaseBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                                                Select a Database
+                                                            </button>
+                                                            <ul class="dropdown-menu" aria-labelledby="selectDatabase">
+                                                                <template v-for="item in returnData" :key="item.id">
+                                                                    <li value="item.id">
+                                                                        <a class="dropdown-item" v-on:click="changeSelectedDatabase(item.id, item.name)">{{ item.id }} - {{ item.name }}</a>
                                                                     </li>
                                                                 </template>
-                                                            </ol>
-                                                        </div>
-                                                        <div v-else class="mt-2">
-                                                            <p>No evidence added yet.</p>
+                                                            </ul>
                                                         </div>
                                                     </div>
-                                                </template>
-                                                <template v-else="!uploadFiles">
-                                                    <div class="form-group mb-3 upload">
-                                                        <label class="label" for="password">Upload Claims and Evidences</label>
-                                                        <file-pond name="uploadFilesManual" ref="manualpond" class="upload-file" class-name="upload-file" credits="false" label-idle="Drop files here..." allow-multiple="true" required="true" maxFiles=3 accepted-file-types="application/json" v-bind:files="uploadedFilesManual" v-on:init="handleFilePondInit" />
+                                                    <div class="form-check form-switch form-switch-lg">
+                                                        <input class="form-check-input addClaimsViaUpload" type="checkbox" v-model="uploadFiles" role="switch" id="flexSwitchCheckDefault">
+                                                        <label class="form-check-label" for="flexSwitchCheckDefault">Check to upload files instead</label>
                                                     </div>
-                                                </template>
-                                                <div class="form-group">
-                                                    <button @click="addClaimAndEvidenceManual" class="form-control btn btn-primary submit px-3">Add Claims</button>
-                                                </div>
+                                                    <template v-if="!uploadFiles">
+                                                        <div class="form-group mb-3">
+                                                            <label class="label" for="name">Claim</label>
+                                                            <input type="text" v-model="addClaimContent" class="form-control" placeholder="Claim content." required>
+                                                        </div>
+                                                        <div class="form-group mb-3">
+                                                            <label class="label" for="password">Original ID</label>
+                                                            <input type="number" v-model="addClaimOriginalID" class="form-control" placeholder="Original ID" required>
+                                                        </div>
+                                                        <div class="form-group mb-3">
+                                                            <label class="label" for="password">Initial Label</label>
+                                                            <select class="form-select" aria-label="Default select example" v-model="selectedInitialLabel" required>
+                                                                <option selected>Choose one from the menu:</option>
+                                                                <option value="SUPPORTS">Supports</option>
+                                                                <option value="REFUTES">Refutes</option>
+                                                                <option value="NOT ENOUGH INFORMATION">Not enough Information</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="form-group mb-3">
+                                                            <label class="label" for="password">Train / Test </label>
+                                                            <select class="form-select" aria-label="Default select example" v-model="selectedTrainLabel" required>
+                                                                <option selected>Choose one from the menu:</option>
+                                                                <option value=1>Train</option>
+                                                                <option value=0>Test</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="form-group mb-3">
+                                                            <label class="label" for="password">Add Evidence</label>
+                                                            <button class="btn btn-secondary px-3 ml-4" data-bs-toggle="modal" data-bs-target="#evidenceModal">Add Evidence</button>
+                                                            <div v-if="addEvidenceStore.length != 0" class="evidences overflow-auto">
+                                                                <ol class="list-group list-group-numbered">
+                                                                    <template v-for="(evidence, index) in addEvidenceStore" :key="index">
+                                                                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                                                                            <div class="ms-2 me-auto w-80">
+                                                                                <div class="fw-bold">{{ addEvidenceTitle[index] }}</div>
+                                                                                {{ evidence }}
+                                                                                <div class="fw-bold">
+                                                                                    <span class="badge bg-primary rounded-pill">Initial Label: {{ addEvidenceLabel[index] }}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="options w-40">
+                                                                                <button @click="deleteEvidenceConfirm" class="btn btn-primary delete-button px-1" :id="'delete-' + index" style="--bs-btn-font-size: 0.9rem;" type="button">
+                                                                                    Remove Evidence
+                                                                                </button>
+                                                                            </div>
+                                                                        </li>
+                                                                    </template>
+                                                                </ol>
+                                                            </div>
+                                                            <div v-else class="mt-2">
+                                                                <p>No evidence added yet.</p>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                    <template v-else="!uploadFiles">
+                                                        <div class="form-group mb-3 upload">
+                                                            <label class="label" for="password">Upload Claims and Evidences</label>
+                                                            <file-pond name="uploadFilesManual" ref="manualpond" class="upload-file" class-name="upload-file" credits="false" label-idle="Drop files here..." allow-multiple="true" required="true" maxFiles=3 accepted-file-types="application/json" v-bind:files="uploadedFilesManual" v-on:init="handleFilePondInit" />
+                                                        </div>
+                                                    </template>
+                                                    <div class="form-group">
+                                                        <button class="form-control btn btn-primary submit px-3">Add Claims</button>
+                                                    </div>
+                                                </form>
                                             </div>
                                         </div>
                                     </div>
@@ -251,8 +277,101 @@
                 </div>
             </div>
         </div>
+
+        <div class="row justify-content-center">
+            <div class="col-md-12 col-lg-12">
+                <div class="wrap d-md-flex">
+                    <div class="login-wrap p-4 p-lg-5 col-md-12 col-lg-12">
+                        <div class="d-flex">
+                            <div class="w-100">
+                                <h4 class="mb-4">Annotation</h4>
+                            </div>
+                        </div>
+                        <div class="row justify-content-center">
+                            <div class="col-md-12 col-lg-12">
+                                <div class="wrap p-1 p-lg-1">
+                                    <ul class="nav nav-pills mb-3" id="pills-tab-annotation" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="pills-annotation-tab" data-bs-toggle="pill" data-bs-target="#pills-home" type="button" role="tab" aria-controls="pills-home" aria-selected="true">Generate Annotation Results</button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-content" id="pills-tabContent">
+                            <div class="tab-pane fade show active" id="pills-annotation" role="tabpanel" aria-labelledby="pills-annotation-tab">
+                                <div class="row justify-content-center">
+                                    <div class="col-md-12 col-lg-12">
+                                        <div class="col-md-12 col-lg-12 login-wrap p-4 p-lg-5">
+                                            <div class="form-group">
+                                                <label class="label" for="name">Select a database</label>
+                                                <div class="databaseDropdown">
+                                                    <button class="btn btn-secondary dropdown-toggle" type="button" ref="selectDatabaseBtnAnnotation" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        Select a Database
+                                                    </button>
+                                                    <ul class="dropdown-menu" aria-labelledby="selectDatabase">
+                                                        <template v-for="item in returnData" :key="item.id">
+                                                            <li value="item.id">
+                                                                <a class="dropdown-item" v-on:click="changeSelectedDatabaseAnnotation(item.id, item.name)">{{ item.id }} - {{ item.name }}</a>
+                                                            </li>
+                                                        </template>
+                                                    </ul>
+                                                </div>
+                                                <div class="form-group mt-3">
+                                                    <button type="submit" @click=getAnnotations class="form-control btn btn-primary submit px-3">Download Annotation Results</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
+<template v-if="showModal">
+    <div class="modal show" id="dashboardModal" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" v-if="loadingAdd" id="dashboardModalLabel">Loading</h1>
+                    <h1 class="modal-title fs-5" v-else id="dashboardModalLabel">Operation Completed</h1>
+                    <button type="button" class="btn-close" v-if="loadingAdd == false" @click=clearModalMessage></button>
+                </div>
+                <div class="modal-body">
+                    <h4></h4>
+                    <div class="text w-100 list-database overflow-auto model-message">
+                        <h6><strong>{{ claimNumber }}</strong> claims added in total.</h6>
+                        <h6><strong>{{ evidenceNumber }}</strong> evidences added in total.</h6>
+                        <template v-if="loadingAdd">
+                            <div class="spinner-grow text-secondary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span> Adding claims ... Please be patient.</span>
+                        </template>
+                        <ol class="list-group list-group-numbered" id="modelMessage">
+                            <hr />
+                            <h6><strong>Log: </strong></h6>
+                            <template v-for="item in modalMessages">
+                                <li class="message-list d-flex">
+                                    <p>{{ item }}</p>
+                                </li>
+                            </template>
+                        </ol>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" @click=clearModalMessage v-if="loadingAdd" class="btn btn-secondary" disabled>Close</button>
+                    <button type="button" @click=clearModalMessage v-else class="btn btn-secondary">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+</template>
 </template>
 
 <script>
@@ -297,6 +416,9 @@ export default {
             returnData: null,
             claimData: null,
 
+            loadingAdd: false,
+            fileReadObject: null,
+
             selectedDatabase: "",
             modeForClaims: "",
 
@@ -304,10 +426,19 @@ export default {
             addClaimContent: "",
             addClaimOriginalID: "",
             selectedInitialLabel: "",
+            selectedTrainLabel: null,
 
             uploadedFilesManual: [],
             addEvidenceStore: [],
             addEvidenceTitle: [],
+            addEvidenceLabel: [],
+
+            modalMessages: [],
+            claimNumber: 0,
+            evidenceNumber: 0,
+            showModal: false,
+
+            selectedDatabaseAnnotation: "",
 
         };
     },
@@ -320,148 +451,179 @@ export default {
         // Generates a random salt for database password
         generateRandomSalt() {
             let result = ' ';
-            for ( let i = 0; i < length; i++ ) {
+            for (let i = 0; i < length; i++) {
                 result += characters.charAt(Math.floor(Math.random() * 20));
             }
             return result;
         },
+        reshuffle: function shuffle(array) {
+            let currentIndex = array.length,
+                randomIndex;
+
+            // While there remain elements to shuffle.
+            while (currentIndex != 0) {
+
+                // Pick a remaining element.
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+
+                // And swap it with the current element.
+                [array[currentIndex], array[randomIndex]] = [
+                    array[randomIndex], array[currentIndex]
+                ];
+            }
+
+            return array;
+        },
         handleFilePondInit: function () {
             console.log('FilePond has initialized');
         },
-        // Check json formatting of all files before processing
-        checkJson(fileArray) {
-            let overallFlag = true;
-            for (var i = 0; i < fileArray.length; i++) {
-                const fileName = fileArray[i].filename
-                const fr = new FileReader();
-                let formatted = "";
-                fr.readAsText(fileArray[i].file);
-                fr.onload = e => {
-                    let text = e.target.result;
-                    try {
-                        const result = JSON.parse(e.target.result);
-                        formatted = JSON.stringify(result, null, 2);
-                    } catch (e) {
-                        this.toast.error("Please check the json formatting in the file named: " + fileName);
-                        overallFlag = false;
-                    }
-                }
+        clearModalMessage() {
+            this.modalMessages = [];
+            this.showModal = false;
+            this.claimNumber = 0;
+            this.evidenceNumber = 0;
+            this.getDatabases();
+            if (this.selectedDatabase != "") {
+                this.getClaims(this.selectedDatabase)
             }
-            return overallFlag;
         },
-        addDatabase(e) {
+        mainAddDatabase(e) {
             const pondFiles = this.$refs.pond.getFiles();
-            // If there is json formatting issues, do not process further
-            var jsonCheckResultStatus = this.checkJson(pondFiles);
-            if (!jsonCheckResultStatus) {
-                return
-            }
-            // Add main database in via axios
-            const databaseData = {
-                owner: this.store.userid,
-                name: this.databaseName,
-                description: this.description,
-                accesskey: this.databasePassword,
-                is_temporal: this.isTemporal,
-                salt: this.generateRandomSalt(),
-            }
-
-            axios
-                .post('/api/v1/database/create/', databaseData)
-                .then(response => {
-                    if (response.data.created == false) {
-                        this.toast.success("Database already exists. Claims and evidences will be added to existing database.")
-                    } else {
-                        this.toast.success("Successfully added database.")
-                    }
-
-                    // Loop through all files to add claims and evidences
-                    for (var i = 0; i < pondFiles.length; i++) {
-                        const fileName = pondFiles[i].filename
-                        const fr = new FileReader();
-                        let formatted = "";
-                        fr.readAsText(pondFiles[i].file);
-                        fr.onload = async e => {
-                            let text = e.target.result;
-                            const result = JSON.parse(e.target.result);
-                            formatted = JSON.stringify(result, null, 2);
-                            for (let j = 0; j < result.length; j++) {
-                                let obj = result[j];
-                                this.addClaims(response.data.id, obj.claim, obj.id, obj.label, obj.evidence, obj.claim_temporal_arguments)
-                            }
-                            this.getDatabases()
-                        }
-                    }
-                })
-                .catch(error => {
-                    // Request was made and server responded unfavourably
-                    if (error.response.data.non_field_errors[0]) {
-                        this.toast.error(error.response.data.non_field_errors[0]);
-                    }
-                    // Request was made but no response received
-                    else if (error.request) {
-                        this.toast.error("Received no response from the server. Please try again.");
-                    }
-                    // Something else happened
-                    else {
-                        this.toast.error("Sorry, an unknown error occurred. Please try again.");
-                    }
-                })
+            this.addDatabase(e, pondFiles, "")
         },
-        addClaimAndEvidenceManual(claim, claimId, claimLabel, evidences, fileUploadFlag) {
+        async addDatabase(e, pondFiles, databaseID) {
+            // Show the loading modal to indicate progress
+            this.loadingAdd = true;
+            this.showModal = true;
+            // If there is json formatting issues, do not process that claim
+            for (var i = 0; i < pondFiles.length; i++) {
+                const fileLoad = await new Promise(resolve => {
+                    this.fileReadObject = null;
+                    const fileName = pondFiles[i].filename
+                    const fr = new FileReader();
+                    fr.readAsText(pondFiles[i].file);
+                    var self = this;
+                    fr.onload = async (e) => {
+                        let text = e.target.result
+                        try {
+                            let result = text.split('\n').map(function (record) {
+                                if (record != "") {
+                                    return JSON.parse(record)
+                                }
+                            })
+                            // Remove empty strings from list
+                            self.fileReadObject = result.filter(item => item);
+                        } catch (e) {
+                            self.toast.error("Please check the json formatting in the file named: " + fileName);
+                            return
+                        }
+
+                        let lengthResult = self.fileReadObject.length
+                        let trainSize = Math.ceil(0.7 * lengthResult)
+                        let testSize = lengthResult - trainSize
+                        let trainTestSplit = new Array(trainSize).fill(1);
+                        if (testSize > 0) {
+                            let testArray = new Array(lengthResult - trainSize).fill(0);
+                            trainTestSplit = self.reshuffle(trainTestSplit.concat(testArray));
+                        }
+
+                        for (let j = 0; j < self.fileReadObject.length; j++) {
+                            let obj = self.fileReadObject[j];
+                            // Add main database in via axios, only if json formatting is correct
+                            var evidence_headers = ['evidence_title', 'evidence_content']
+                            var evidence = obj.evidence.map(function (a) {
+                                var object = {};
+                                evidence_headers.forEach(function (k, i) {
+                                    object[k] = a[i];
+                                });
+                                return object;
+                            });
+                            var newFlag = true;
+                            if (databaseID != "") {
+                                newFlag = false;
+                            }
+                            const sendData = {
+                                new: newFlag,
+                                // Database
+                                owner: self.store.userid,
+                                name: self.databaseName,
+                                databaseId: databaseID,
+                                description: self.description,
+                                accesskey: self.databasePassword,
+                                is_temporal: self.isTemporal,
+                                salt: self.generateRandomSalt(),
+                                // Claim
+                                claimContent: obj.claim,
+                                original_id: obj.id,
+                                initial_label: obj.label,
+                                train_test_label: parseInt(trainTestSplit[j]),
+                                // Temporal
+                                temporalContent: JSON.stringify(obj.claim_temporal_arguments),
+                                // Evidence
+                                evidence: JSON.stringify(evidence),
+                                // Golden Evi
+                                golden_evi: JSON.stringify(obj.golden_evi),
+                            }
+
+                            // We want to do this sequentially first, since chrome cannot send too many parallel Axios requests
+
+                            const axiosResult = await axios
+                                .post('/api/v1/database/newdb/', sendData)
+                                .then(response => {
+                                    self.claimNumber = self.claimNumber + 1;
+                                    self.evidenceNumber = self.evidenceNumber + response.data.numEvidence;
+                                })
+                                .catch(error => {
+                                    // Request was made and server responded unfavourably
+                                    if (error.response.data.non_field_errors[0]) {
+                                        self.toast.error(error.response.data.non_field_errors[0]);
+                                    }
+                                    // Request was made but no response received
+                                    else if (error.request) {
+                                        self.toast.error("Received no response from the server. Please try again.");
+                                    }
+                                    // Something else happened
+                                    else {
+                                        self.toast.error("Sorry, an unknown error occurred. Please try again.");
+                                    }
+                                })
+                        }
+                        resolve()
+                    }
+                });
+            }
+            this.loadingAdd = false;
+        },
+        async addClaimAndEvidenceManual(e) {
             const databaseId = this.selectedDatabase;
 
             if (this.uploadFiles) {
                 const manualPondFiles = this.$refs.manualpond.getFiles();
-                // If there is json formatting issues, do not process further
-                var jsonCheckResultStatus = this.checkJson(manualPondFiles);
-                if (!jsonCheckResultStatus) {
-                    return
-                }
-                // Loop through all files to add claims and evidences
-                for (var i = 0; i < manualPondFiles.length; i++) {
-                    const fileName = manualPondFiles[i].filename
-                    const fr = new FileReader();
-                    let formatted = "";
-                    fr.readAsText(manualPondFiles[i].file);
-                    fr.onload = async e => {
-                        let text = e.target.result;
-                        const result = JSON.parse(e.target.result);
-                        formatted = JSON.stringify(result, null, 2);
-                        for (let j = 0; j < result.length; j++) {
-                            let obj = result[j];
-                            this.addClaims(databaseId, obj.claim, obj.id, obj.label, obj.evidence, obj.claim_temporal_arguments)
-                        }
-                    }
-                }
+                const added = await this.addDatabase(e, manualPondFiles, databaseId)
             } else {
                 const claim = this.addClaimContent;
                 const claimId = this.addClaimOriginalID;
                 const claimLabel = this.selectedInitialLabel;
+                const trainLabel = this.selectedTrainLabel;
                 const temporalSections = [];
                 const evidences = this.addEvidenceTitle.map((e, i) => [e, this.addEvidenceStore[i]]);
-                this.addClaims(databaseId, claim, claimId, claimLabel, evidences, temporalSections);
+                this.addClaims(databaseId, claim, claimId, claimLabel, evidences, temporalSections, this.addEvidenceLabel, trainLabel);
+                this.toast.success("Claims and evidences added successfully.");
             }
         },
-        addClaims(databaseId, claim, claimId, claimLabel, evidences, temporalSections) {
+        addClaims(databaseId, claim, claimId, claimLabel, evidences, temporalSections, golden_evi, trainTest) {
             const claimData = {
                 database: databaseId,
                 content: claim,
                 original_id: claimId,
                 initial_label: claimLabel,
+                train_test_label: parseInt(trainTest),
             }
             axios
                 .post('/api/v1/database/claims/create/', claimData)
                 .then(response => {
-                    if (response.data.created == false) {
-                        this.toast.success("Claim already exists. The claim - " + claim + " will not be added.")
-                    } else {
-                        this.toast.success("Successfully added claim to database.")
-                    }
-                    // Update claims if selected database same as the one claim added
-                    if (this.selectedDatabase == databaseId) {
-                        this.getClaims(databaseId)
-                    }
+                    this.modalMessages.push("Successfully added claim: \"" + claim + "\" to database.")
                     // Add temporal section
                     for (let k = 0; k < temporalSections.length; k++) {
                         this.addTemporalArguments(response.data.id, temporalSections[k]);
@@ -469,8 +631,10 @@ export default {
 
                     //Add evidences
                     for (let k = 0; k < evidences.length; k++) {
-                        this.addEvidence(response.data.id, evidences[k][0], evidences[k][1]);
+                        this.addEvidence(response.data.id, evidences[k][0], evidences[k][1], golden_evi[k]);
                     }
+
+                    this.getClaims(this.selectedDatabase)
                 })
                 .catch(error => {
                     // Request was made and server responded unfavourably
@@ -496,57 +660,39 @@ export default {
                 .post('/api/v1/database/temporalargs/create/', temporalData)
                 .then(response => {
                     if (response.data.created == false) {
-                        this.toast.success("Temporal Argument already exists. The temporal argument - " + temporalContent + " will not be added.")
+                        this.modalMessages.push("Temporal Argument - " + temporalContent + " already exists for this claim. The temporal argument will not be added.")
                     } else {
-                        this.toast.success("Successfully added temporal arguments to database.")
+                        this.modalMessages.push("Successfully added temporal argument - " + temporalContent + " to database.")
                     }
                 })
                 .catch(error => {
                     console.log(error)
-                    // Request was made and server responded unfavourably
-                    if (error.response.data.non_field_errors[0]) {
-                        this.toast.error(error.response.data.non_field_errors[0]);
-                    }
-                    // Request was made but no response received
-                    else if (error.request) {
-                        this.toast.error("Received no response from the server. Please try again.");
-                    }
-                    // Something else happened
-                    else {
-                        this.toast.error("Sorry, an unknown error occurred. Please try again.");
-                    }
+                    this.modalMessages.push("There were some issues adding Temporal Argument - " + temporalContent + " .");
                 })
         },
         // Main evidence add on database add page
-        addEvidence(claimId, title, content) {
+        addEvidence(claimId, title, content, golden_evi) {
             const evidenceData = {
                 claim: claimId,
                 title: title,
                 content: content,
+                golden_evi: golden_evi,
             }
+            console.log(evidenceData)
             axios
                 .post('/api/v1/database/evidence/create/', evidenceData)
                 .then(response => {
                     if (response.data.created == false) {
-                        this.toast.success("Evidence already exists. The evidence - " + content + " will not be added.")
+                        this.modalMessages.push("Evidence - " + content + " already exists. The evidence will not be added.")
                     } else {
-                        this.toast.success("Successfully added evidence to database.")
+                        this.evidenceNumber = this.evidenceNumber + 1;
+                        this.modalMessages.push("Successfully added evidence - " + content + " to database.")
                     }
                     // Successfully added database, claims and evidences
                 })
                 .catch(error => {
                     // Request was made and server responded unfavourably
-                    if (error.response.data.non_field_errors[0]) {
-                        this.toast.error(error.response.data.non_field_errors[0]);
-                    }
-                    // Request was made but no response received
-                    else if (error.request) {
-                        this.toast.error("Received no response from the server. Please try again.");
-                    }
-                    // Something else happened
-                    else {
-                        this.toast.error("Sorry, an unknown error occurred. Please try again.");
-                    }
+                    this.modalMessages.push("There were some issues adding evidence - " + content + " .");
                 })
 
         },
@@ -559,17 +705,7 @@ export default {
                 })
                 .catch(error => {
                     // Request was made and server responded unfavourably
-                    if (error.response.data.non_field_errors[0]) {
-                        this.toast.error(error.response.data.non_field_errors[0]);
-                    }
-                    // Request was made but no response received
-                    else if (error.request) {
-                        this.toast.error("Received no response from the server. Please try again.");
-                    }
-                    // Something else happened
-                    else {
-                        this.toast.error("Sorry, an unknown error occurred. Please try again.");
-                    }
+                    this.toast.error("There was some issue retrieving databases.");
                 })
         },
         activateDatabase: function (e) {
@@ -626,19 +762,23 @@ export default {
                     }
                 })
         },
-        changeSelectedDatabase(id) {
+        changeSelectedDatabase(id, name) {
             this.selectedDatabase = id;
-            this.$refs.selectDatabaseBtn.innerText = id;
+            this.$refs.selectDatabaseBtn.innerText = id + " - " + name;
             // Updates claims as well
             this.getClaims(this.selectedDatabase);
         },
+        changeSelectedDatabaseAnnotation(id, name) {
+            this.selectedDatabaseAnnotation = id;
+            this.$refs.selectDatabaseBtnAnnotation.innerText = id + " - " + name;
+        },
         getClaims(dbId) {
-            const dbData = {
-                databaseId: dbId,
-            }
             axios
-                .get('/api/v1/database/claims/list/', dbData)
+                .get('/api/v1/database/claims/list/', {
+                    params: { databaseId: dbId }
+                })
                 .then((response) => {
+                    console.log(response.data)
                     this.claimData = response.data
                     console.log(this.claimData)
                 })
@@ -663,7 +803,7 @@ export default {
                 .delete('/api/v1/database/claims/delete/' + e.target.id.substring(7) + '/')
                 .then((response) => {
                     console.log(response.data)
-                    this.getClaims()
+                    this.getClaims(this.selectedDatabase)
                     this.toast.success("Claim is successfully deleted.");
                 })
                 .catch(error => {
@@ -685,12 +825,43 @@ export default {
         addEvidenceConfirm() {
             this.addEvidenceTitle.push(this.$refs.titleField.value)
             this.addEvidenceStore.push(this.$refs.evidenceField.value)
+            this.addEvidenceLabel.push(this.$refs.evidenceInitialTagField.value)
         },
         deleteEvidenceConfirm: function (e) {
             const indexToDelete = e.target.id.substring(7)
             this.addEvidenceTitle.splice(indexToDelete, 1)
             this.addEvidenceStore.splice(indexToDelete, 1)
-        }
+            this.addEvidenceLabel.splice(indexToDelete, 1)
+        },
+        getAnnotations() {
+            axios
+                .get('/api/v1/database/annotation/list/', {
+                    params: { databaseId: this.selectedDatabaseAnnotation }
+                })
+                .then((response) => {
+                    console.log(JSON.stringify(response.data))
+                    var bb = new Blob([JSON.stringify(response.data)], { type: 'text/json' });
+                    var a = document.createElement('a');
+                    a.download = 'annotation_results.json';
+                    a.href = window.URL.createObjectURL(bb);
+                    a.click();
+                    a.remove();
+                })
+                .catch(error => {
+                    // Request was made and server responded unfavourably
+                    if (error.response.data.non_field_errors[0]) {
+                        this.toast.error(error.response.data.non_field_errors[0]);
+                    }
+                    // Request was made but no response received
+                    else if (error.request) {
+                        this.toast.error("Received no response from the server. Please try again.");
+                    }
+                    // Something else happened
+                    else {
+                        this.toast.error("Sorry, an unknown error occurred. Please try again.");
+                    }
+                })
+        },
     },
     components: {
         FilePond,
@@ -731,7 +902,7 @@ export default {
 }
 
 .list-database {
-    height: 90%;
+    height: 600px;
     background-color: white;
     border-radius: 5px;
 }
@@ -782,6 +953,30 @@ export default {
     width: 100%;
     height: 200px;
     border: 1px solid rgb(210, 210, 210);
+}
+
+.model-message {
+    height: 300px;
+    background-color: #f5f2f2;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.message-list {
+    border-radius: 5px;
+    background-color: white;
+    border: 1px #c2c0c0 solid;
+    padding: 5px;
+    margin-top: 5px;
+}
+
+.numberClaims {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.logout-button {
+    width: 200px;
 }
 
 /* @import '../assets/css/homepage.css'; */

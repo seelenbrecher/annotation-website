@@ -6,10 +6,13 @@ from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView
 from rest_framework.generics import DestroyAPIView
 from rest_framework.generics import UpdateAPIView
-from database.serializers import DatabaseSerializer, ClaimSerializer, ClaimEvidenceSerializer
+from database.serializers import DatabaseSerializer, ClaimSerializer, ClaimEvidenceSerializer, AnnotationSerializer
 from database.models import Database, Claim, Evidence, TemporalClaimSection, Annotation, Justification
 from user.models import CustomUser
 import bcrypt
+from django.db.models import Count
+from django.http import JsonResponse
+import json
 
 # Generate database's secure accesskey with a salt
 def hash_new_password(password):
@@ -60,7 +63,9 @@ class ListDatabaseAPIView(ListAPIView):
         for the currently authenticated user.
         """
         user = self.request.user
-        filtered_queryset = Database.objects.filter(owner=user)
+        filtered_queryset = Database.objects.filter(owner=user).annotate(
+            num_claims=Count('claim')
+        )
         return filtered_queryset
         
 
@@ -90,6 +95,58 @@ class DeleteDatabaseAPIView(DestroyAPIView):
     queryset = Database.objects.all()
     serializer_class = DatabaseSerializer
 
+# Main function to add databases + claims + evidence + temporal arguments to reduce axios calls
+class CreateDatabaseClaimEvidenceTemporalAPIView(APIView):
+    # Disable administrator authentication and permission for annotation
+    authentication_classes = []
+    permission_classes = []
+    def post(self, request):
+        reqNew = request.data.get('new')
+        # Create database first
+        if reqNew == True:
+            reqOwner = request.data.get('owner')
+            reqName = request.data.get('name')
+            reqDescription = request.data.get('description')
+            pw_hash = hash_new_password(request.data.get('accesskey'))
+            reqIsTemporal = request.data.get('is_temporal')
+            user = CustomUser.objects.get(id=reqOwner)
+            databaseObj, databaseCreated = Database.objects.get_or_create(
+            owner=user,
+            name=reqName,
+            defaults={'description': reqDescription, 'accesskey': pw_hash, 'is_temporal': reqIsTemporal})
+        else:
+            databaseObj = Database.objects.get(id = int(request.data.get('databaseId')))
+        # Add Claim
+        reqContent = request.data.get('claimContent')
+        reqOriginalId = request.data.get('original_id')
+        reqInitialLabel = request.data.get('initial_label')
+        reqTrainTest = request.data.get('train_test_label')
+        claim = Claim(
+            database=databaseObj,
+            content=reqContent,
+            original_id=reqOriginalId,
+            initial_label=reqInitialLabel,
+            train_test_label=reqTrainTest
+        )
+        claim.save()
+        # Add Temporal Argument
+        reqClaim = claim
+        reqTemporalContent = json.loads(request.data.get('temporalContent'))
+        for temporalArg in reqTemporalContent:  
+            obj, created = TemporalClaimSection.objects.get_or_create(
+            claim=reqClaim,
+            temporal_content=temporalArg)
+            
+        # Add Evidence
+        reqEvidence = json.loads(request.data.get('evidence'))
+        reqGoldenEvi = json.loads(request.data.get('golden_evi'))
+
+        for idx in range(len(reqEvidence)):
+            obj, created = Evidence.objects.get_or_create(
+            claim=reqClaim,
+            content=reqEvidence[idx]['evidence_content'],
+            defaults={'title': reqEvidence[idx]['evidence_title'], 'golden_evi': reqGoldenEvi[idx]})
+        return Response({"databaseId": databaseObj.pk, "claimId": claim.pk, "numTemporal": len(reqTemporalContent) , "numEvidence": len(reqEvidence)})
 
 # Claims
 class CreateClaimAPIView(APIView):
@@ -99,13 +156,24 @@ class CreateClaimAPIView(APIView):
         reqContent = request.data.get('content')
         reqOriginalId = request.data.get('original_id')
         reqInitialLabel = request.data.get('initial_label')
+        reqTrainTest = request.data.get('train_test_label')
         getDatabase = Database.objects.get(id=reqDatabase)
 
-        obj, created = Claim.objects.get_or_create(
-        database=getDatabase,
-        content=reqContent,
-        defaults={'original_id': reqOriginalId, 'initial_label': reqInitialLabel})
-        return Response({"id": obj.id, "created": created})
+        claim = Claim(
+            database=Database.objects.get(id=reqDatabase),
+            content=reqContent,
+            original_id=reqOriginalId,
+            initial_label=reqInitialLabel,
+            train_test_label=reqTrainTest
+        )
+        claim.save()
+
+        # obj, created = Claim.objects.get_or_create(
+        # database=getDatabase,
+        # content=reqContent,
+        # defaults={'original_id': reqOriginalId, 'initial_label': reqInitialLabel})
+        # return Response({"id": obj.id, "created": created})
+        return Response({"id": claim.id})
 
 class ListClaimAPIView(ListAPIView):
     serializer_class = ClaimSerializer
@@ -116,10 +184,9 @@ class ListClaimAPIView(ListAPIView):
         by filtering against a `databaseId` query parameter in the URL.
         """
         queryset = Claim.objects.all()
-        databaseId = self.request.data.get('databaseId')
-        if databaseId is not None:
-            databaseObj = Database.objects.get(id=databaseId)
-            queryset = queryset.filter(database=databaseObj)
+        databaseId = self.request.query_params.get('databaseId')
+        databaseObj = Database.objects.get(id=databaseId)
+        queryset = queryset.filter(database=databaseObj)
         return queryset
 
 # Get single entry for annotation (instead of all for speed)
@@ -154,8 +221,6 @@ class ListClaimWithEvidenceAPIView(APIView):
         else:
             raise NotFound("Database ID must be provided!")
 
-
-
 class DeleteClaimAPIView(DestroyAPIView):
     """This endpoint allows for deletion of a specific Claim"""
     queryset = Claim.objects.all()
@@ -181,12 +246,13 @@ class CreateEvidenceAPIView(APIView):
         reqClaim = request.data.get('claim')
         reqTitle = request.data.get('title')
         reqContent = request.data.get('content')
+        reqGoldenEvi = request.data.get('golden_evi')
         getClaim = Claim.objects.get(id=reqClaim)
 
         obj, created = Evidence.objects.get_or_create(
         claim=getClaim,
         content=reqContent,
-        defaults={'title': reqTitle})
+        defaults={'title': reqTitle, 'golden_evi': reqGoldenEvi})
         return Response({"id": obj.id, "created": created})
 
 
@@ -215,6 +281,20 @@ class CreateAnnotationAPIView(APIView):
         )
         obj.save()
         return Response({"id": obj.id})
+
+class ListAnnotationAPIView(APIView):
+    """This endpoint allows for listing of an annotation"""
+    # Disable administrator authentication and permission for annotation
+    authentication_classes = []
+    permission_classes = []
+    serializer_class = AnnotationSerializer
+    def get(self, request):
+        databaseId = request.query_params.get('databaseId')
+        databaseObj = Database.objects.get(id=databaseId)
+        getClaims = Claim.objects.filter(database=databaseObj)
+        annotations = Annotation.objects.filter(claim__in=getClaims)
+        output = AnnotationSerializer(annotations, many=True)
+        return JsonResponse(output.data, safe=False)
 
 # Justification
 class CreateJustificationAPIView(APIView):

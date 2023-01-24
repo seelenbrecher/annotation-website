@@ -168,6 +168,21 @@
                                     </div>
                                 </div>
                             </template>
+                            <template v-else>
+                                <div class="form-group text-right">
+                                    <button @click="nextAnnotationProcess" type="submit" class="form-control btn btn-dark submit px-3 annotate-next-button-2 mt-2">
+                                        <span class="badge text-bg-light ml-3 annotate-next">
+                                            Finish Annotation
+                                        </span>
+                                        <span v-if="count != 1" class="badge text-bg-light ml-3 move-on">
+                                            and move on to the next one
+                                        </span>
+                                        <span v-else class="badge text-bg-light ml-3 move-on">
+                                            no more claims to annotate
+                                        </span>
+                                    </button>
+                                </div>
+                            </template>
                             <div class="form-group d-md-flex">
                                 <div class="w-100 text-md-right">
                                     <a href v-on:click.prevent="login = !login">Report a problem
@@ -273,11 +288,15 @@ export default {
             this.$router.push({ name: 'homepage' })
         },
         nextAnnotationProcess() {
-            this.section = this.section + 1;
-            if (this.section == 1 || this.section == 3) {
-                this.captureJustifications();
-            }
-            if (this.section == 4) {
+            if (this.overallTemporalFlag == 'true') {
+                this.section = this.section + 1;
+                if (this.section == 1 || this.section == 3) {
+                    this.captureJustifications();
+                }
+                if (this.section == 4) {
+                    this.nextAnnotate()
+                }
+            } else {
                 this.nextAnnotate()
             }
         },
@@ -414,98 +433,109 @@ export default {
         },
         submitAnnotation() {
             // Submit annotation then add justification in
-            const submittedAnnotateData = {
-                claimId: this.annotationTodo.id,
-                email: this.store.annotatorEmail,
-                overall_temporal_claim: this.overallTemporalFlag == 'true',
-                temporal_flag: this.processFlags(this.temporalFlag),
-                general_flag: this.processFlags(this.generalFlag),
-                overall_flag: this.processOverallFlag(this.temporalFlag, this.generalFlag)
+            var submittedAnnotateData;
+            if (this.overallTemporalFlag == 'true') {
+                submittedAnnotateData = {
+                    claimId: this.annotationTodo.id,
+                    email: this.store.annotatorEmail,
+                    overall_temporal_claim: true,
+                    temporal_flag: this.processFlags(this.temporalFlag),
+                    general_flag: this.processFlags(this.generalFlag),
+                    overall_flag: this.processOverallFlag(this.temporalFlag, this.generalFlag)
+                }
+            } else {
+                submittedAnnotateData = {
+                    claimId: this.annotationTodo.id,
+                    email: this.store.annotatorEmail,
+                    overall_temporal_claim: false,
+                }
             }
             axios
                 .post('/api/v1/database/annotation/add/', submittedAnnotateData)
                 .then(initialresponse => {
                     console.log(initialresponse.data)
-                    // Add justification after annotation successfully added
-                    for (var i = 0; i < this.temporalJustification.length; i++) {
-                        const justificationText = this.temporalJustification[i]
-                        var submittedJustificationData;
-                        // For claim justificaion, no need add evidence ids
-                        if (this.temporalFlag == 2) {
-                            submittedJustificationData = {
-                                annotation: initialresponse.data.id,
-                                temporal: true,
-                                claimPart: true,
-                                justification: justificationText
+                    if (this.overallTemporalFlag == 'true') {
+                        // Add justification after annotation successfully added
+                        for (var i = 0; i < this.temporalJustification.length; i++) {
+                            const justificationText = this.temporalJustification[i]
+                            var submittedJustificationData;
+                            // For claim justificaion, no need add evidence ids
+                            if (this.temporalFlag == 2) {
+                                submittedJustificationData = {
+                                    annotation: initialresponse.data.id,
+                                    temporal: true,
+                                    claimPart: true,
+                                    justification: justificationText
+                                }
+                            } else {
+                                submittedJustificationData = {
+                                    annotation: initialresponse.data.id,
+                                    evidence: this.temporalJustificationEvidenceIds[i],
+                                    temporal: true,
+                                    claimPart: false,
+                                    justification: justificationText
+                                }
                             }
-                        } else {
-                            submittedJustificationData = {
-                                annotation: initialresponse.data.id,
-                                evidence: this.temporalJustificationEvidenceIds[i],
-                                temporal: true,
-                                claimPart: false,
-                                justification: justificationText
-                            }
+                            console.log(submittedJustificationData)
+
+                            axios.post('/api/v1/database/annotation/add/justification/', submittedJustificationData).then(response => {
+                                console.log(response.data)
+                            }).catch(error => {
+                                console.log(error)
+                                // Request was made and server responded unfavourably
+                                if (error.response.data.non_field_errors[0]) {
+                                    this.toast.error(error.response.data.non_field_errors[0]);
+                                }
+                                // Request was made but no response received
+                                else if (error.request) {
+                                    this.toast.error("Received no response from the server. Please try again.");
+                                }
+                                // Something else happened
+                                else {
+                                    this.toast.error("Sorry, an unknown error occurred. Please try again.");
+                                }
+                            })
+
                         }
-                        console.log(submittedJustificationData)
 
-                        axios.post('/api/v1/database/annotation/add/justification/', submittedJustificationData).then(response => {
-                            console.log(response.data)
-                        }).catch(error => {
-                            console.log(error)
-                            // Request was made and server responded unfavourably
-                            if (error.response.data.non_field_errors[0]) {
-                                this.toast.error(error.response.data.non_field_errors[0]);
+                        for (var i = 0; i < this.generalJustification.length; i++) {
+                            const justificationText = this.generalJustification[i]
+                            var submittedJustificationData;
+                            // For claim justificaion, no need add evidence ids
+                            if (this.generalFlag == 2) {
+                                submittedJustificationData = {
+                                    annotation: initialresponse.data.id,
+                                    temporal: false,
+                                    claimPart: true,
+                                    justification: justificationText
+                                }
+                            } else {
+                                submittedJustificationData = {
+                                    annotation: initialresponse.data.id,
+                                    evidence: this.generalJustificationEvidenceIds[i],
+                                    temporal: false,
+                                    claimPart: false,
+                                    justification: justificationText
+                                }
                             }
-                            // Request was made but no response received
-                            else if (error.request) {
-                                this.toast.error("Received no response from the server. Please try again.");
-                            }
-                            // Something else happened
-                            else {
-                                this.toast.error("Sorry, an unknown error occurred. Please try again.");
-                            }
-                        })
-
-                    }
-
-                    for (var i = 0; i < this.generalJustification.length; i++) {
-                        const justificationText = this.generalJustification[i]
-                        var submittedJustificationData;
-                        // For claim justificaion, no need add evidence ids
-                        if (this.generalFlag == 2) {
-                            submittedJustificationData = {
-                                annotation: initialresponse.data.id,
-                                temporal: false,
-                                claimPart: true,
-                                justification: justificationText
-                            }
-                        } else {
-                            submittedJustificationData = {
-                                annotation: initialresponse.data.id,
-                                evidence: this.generalJustificationEvidenceIds[i],
-                                temporal: false,
-                                claimPart: false,
-                                justification: justificationText
-                            }
+                            axios.post('/api/v1/database/annotation/add/justification/', submittedJustificationData).then(response => {
+                                console.log(response.data)
+                            }).catch(error => {
+                                console.log(error.data)
+                                // Request was made and server responded unfavourably
+                                if (error.response.data.non_field_errors[0]) {
+                                    this.toast.error(error.response.data.non_field_errors[0]);
+                                }
+                                // Request was made but no response received
+                                else if (error.request) {
+                                    this.toast.error("Received no response from the server. Please try again.");
+                                }
+                                // Something else happened
+                                else {
+                                    this.toast.error("Sorry, an unknown error occurred. Please try again.");
+                                }
+                            })
                         }
-                        axios.post('/api/v1/database/annotation/add/justification/', submittedJustificationData).then(response => {
-                            console.log(response.data)
-                        }).catch(error => {
-                            console.log(error.data)
-                            // Request was made and server responded unfavourably
-                            if (error.response.data.non_field_errors[0]) {
-                                this.toast.error(error.response.data.non_field_errors[0]);
-                            }
-                            // Request was made but no response received
-                            else if (error.request) {
-                                this.toast.error("Received no response from the server. Please try again.");
-                            }
-                            // Something else happened
-                            else {
-                                this.toast.error("Sorry, an unknown error occurred. Please try again.");
-                            }
-                        })
                     }
                     // Axios call to fetch first entry for annotation 
                     const annotateData = {
@@ -519,6 +549,7 @@ export default {
                             this.annotationTodo = response.data.firstItem
                             this.count = response.data.count
                             this.section = 0;
+                            this.overallTemporalFlag = 'true';
                             // Clears out previous entries
                             this.selectTemporal();
                             this.selectGeneral();

@@ -29,12 +29,10 @@ class Claim(models.Model):
     content = models.CharField(max_length=200)
     original_id = models.IntegerField()
     initial_label= models.CharField(max_length=20)
+    # Train = 1, Test = 0
+    train_test_label = models.IntegerField()
     created_at = models.DateTimeField(default=timezone.now)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['database', 'content'], name="labeller_claim_unique")
-        ]
+    # There can be multiple similar claims in the same database, but with different evidences stored
 
     def __str___(self):
             return self.name
@@ -55,6 +53,7 @@ class Evidence(models.Model):
     claim = models.ForeignKey(Claim, on_delete=models.CASCADE, related_name="evidences")
     title = models.CharField(max_length=100)
     content = models.CharField(max_length=500)
+    golden_evi = models.CharField(max_length=20)
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -64,12 +63,12 @@ class Evidence(models.Model):
 
 # Annotation
 class Annotation(models.Model):
-    claim = models.ForeignKey(Claim, on_delete=models.CASCADE, related_name="annotation")
+    claim = models.ForeignKey(Claim, on_delete=models.CASCADE, related_name="annotations")
     annotator_email = models.CharField(max_length=100)
     annotator_temporal_flag = models.BooleanField()
-    temporal_label = models.CharField(max_length=30)
-    general_label = models.CharField(max_length=30)
-    overall_label = models.CharField(max_length=30)
+    temporal_label = models.CharField(max_length=30, blank=True, null=True)
+    general_label = models.CharField(max_length=30, blank=True, null=True)
+    overall_label = models.CharField(max_length=30, blank=True, null=True)
     annotated_at = models.DateTimeField(default=timezone.now)
     manual_review_flag = models.BooleanField(default=False)
     manual_review_comments = models.CharField(max_length=500, blank=True, null=True)
@@ -81,7 +80,7 @@ class Annotation(models.Model):
 
 # Justification
 class Justification(models.Model):
-    annotation = models.ForeignKey(Annotation, on_delete=models.CASCADE)
+    annotation = models.ForeignKey(Annotation, on_delete=models.CASCADE, related_name="justifications")
     # True means temporal, False means general
     temporal = models.BooleanField()
     evidence = models.ForeignKey(Evidence, on_delete=models.CASCADE, blank=True, null=True)
