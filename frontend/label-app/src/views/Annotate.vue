@@ -57,7 +57,7 @@
                                     <div class="col-md-12 col-lg-12 annotation text-left">
                                         <template v-if="section == 0">
                                             <div class="form-group mb-1">
-                                                <span class="badge text-bg-primary label-badge">Temporal Label</span>
+                                                <span class="badge text-bg-primary label-badge">Label</span>
                                             </div>
                                             <div class="btn-group w-100" role="group" aria-label="Basic radio toggle button group">
                                                 <input type="radio" v-model="temporalFlag" @click="selectTemporal" class="btn-check label-button" name="gbtnradio" id="temporalbtnradio1" value=0 autocomplete="off">
@@ -69,11 +69,11 @@
                                                 <input type="radio" v-model="temporalFlag" @click="selectTemporal" class="btn-check label-button" name="gbtnradio" id="temporalbtnradio3" value=2 autocomplete="off">
                                                 <label class="btn btn-outline-primary label-button" for="temporalbtnradio3">Not Enough Information</label>
                                             </div>
-                                            <p v-if="temporalFlag == null" class="text-center"> Please select a temporal label before moving on to temporal justification.</p>
+                                            <p v-if="temporalFlag == null" class="text-center"> Please select a label.</p>
                                             <div class="form-group text-right">
                                                 <button @click="nextAnnotationProcess" type="submit" class="form-control btn btn-dark submit px-3 annotate-next-button mt-2" :disabled="temporalFlag == null">
                                                     <span class="badge text-bg-light ml-3 annotate-next">
-                                                        Next to temporal justification
+                                                        Next claim
                                                     </span>
                                                 </button>
                                             </div>
@@ -289,13 +289,14 @@ export default {
         },
         nextAnnotationProcess() {
             if (this.overallTemporalFlag == 'true') {
-                this.section = this.section + 1;
-                if (this.section == 1 || this.section == 3) {
-                    this.captureJustifications();
-                }
-                if (this.section == 4) {
-                    this.nextAnnotate()
-                }
+                // this.section = this.section + 1;
+                // if (this.section == 1 || this.section == 3) {
+                //     this.captureJustifications();
+                // }
+                // if (this.section == 4) {
+                //     this.nextAnnotate()
+                // }
+                this.nextAnnotate()
             } else {
                 this.nextAnnotate()
             }
@@ -440,8 +441,8 @@ export default {
                     email: this.store.annotatorEmail,
                     overall_temporal_claim: true,
                     temporal_flag: this.processFlags(this.temporalFlag),
-                    general_flag: this.processFlags(this.generalFlag),
-                    overall_flag: this.processOverallFlag(this.temporalFlag, this.generalFlag)
+                    general_flag: this.processFlags(0),
+                    overall_flag: this.processOverallFlag(this.temporalFlag)
                 }
             } else {
                 submittedAnnotateData = {

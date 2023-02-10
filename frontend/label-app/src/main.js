@@ -21,6 +21,9 @@ import { faTimes } from '@fortawesome/free-solid-svg-icons'
 import Toast from "vue-toastification";
 /* Import the toastify CSS */
 import "vue-toastification/dist/index.css";
+import {BootstrapVueNext, BToastPlugin} from 'bootstrap-vue-next';
+import 'bootstrap/dist/css/bootstrap.css'
+import 'bootstrap-vue-next/dist/bootstrap-vue-next.css'
 
 /* add icons to the library */
 library.add(faArrowCircleRight)
@@ -34,4 +37,6 @@ pinia.use(piniaPluginPersistedstate)
 app.use(Toast);
 app.use(pinia);
 app.use(router, axios);
+app.use(BootstrapVueNext);
+app.use(BToastPlugin);
 app.mount("#app");
